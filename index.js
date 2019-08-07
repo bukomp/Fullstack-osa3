@@ -1,4 +1,7 @@
+require('dotenv').config()
+
 const express = require('express')
+const Persons = require('./models/persons')
 const morgan = require('morgan')
 const fs = require('fs')
 const cors = require('cors')
@@ -66,22 +69,24 @@ app.get('/api/*', (req, res) => {
   switch(url_parts[2]){
     case "persons":
       let response;
-
-      url_parts[3]?
-        persons.some(person=>{
-        if(person.id === +url_parts[3]){
-          //console.log(person.id);
-          response = person;
-          return true;
-        }
-      }):response = persons;
-
-
-      response?
-        res.send(response)
-        :res.status(404).json({
-          error: `no data by id:${url_parts[3]} found`
-        });
+      console.log(url_parts);
+      (url_parts[3] !== '' && url_parts[3])?
+        Persons.find({id: url_parts[3]}).then(r => {
+        r?
+          res.json(r.map(prs => prs.toJSON()))
+        :
+          res.status(404).json({
+            error: `no data by id:${url_parts[3]} found`
+          })
+        })
+        :Persons.find({}).then(r=>{
+          r?
+            res.json(r.map(prs => prs.toJSON()))
+          :
+            res.status(404).json({
+            error: `no data found`
+          })
+        })
       break;
     default:
       res.send("<h1>no data</h1>")
@@ -138,7 +143,7 @@ app.post('/api/persons', (req, res) => {
 
 
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
