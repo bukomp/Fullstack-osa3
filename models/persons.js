@@ -5,8 +5,6 @@ const mongoose = require('mongoose')
   process.exit(1)
 }*/
 
-const password = process.argv[2]
-
 const url = process.env.MONGODB_URI;
 mongoose.connect(url, { useNewUrlParser: true })
   .then(result => {

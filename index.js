@@ -5,6 +5,9 @@ const Persons = require('./models/persons')
 const morgan = require('morgan')
 const fs = require('fs')
 const cors = require('cors')
+const mongoose = require('mongoose')
+mongoose.set('useFindAndModify', false)
+
 
 const app = express()
 
@@ -21,49 +24,61 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :d
 app.use(cors())
 
 
-let persons = [
-    {
-      name:"Edvard",
-      number:"123123",
-      id:0
-    }
-  ];
 
-const genRandNum = (max, min) => {
-  return Math.floor(Math.random() * (+max - +min + 1)) + +min;
-}
+/*const malformattedId = (e, req, res, next) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}*/
 
-app.delete('/api/*', (req,  res) => {
+app.delete('/api/*', (req, res, next) => {
   const url_parts = req.path.split('/');
   //console.log(url_parts);
   switch(url_parts[2]){                                             //I added switches to some calls in case there will be more databases
     case "persons":
-      let response;
 
-      url_parts[3]?
+      Persons.findByIdAndDelete(url_parts[3]).then(r => {
+        console.log(r);
+        r?
+          Persons.find({}).then(r => {
+            console.log(r.map(pers => pers.toJSON()));
+            res.status(200).json({
+              data: r.map(pers => pers.toJSON()),
+              message: `person with id:${url_parts[3]} has been removed`
+            })
+          })
+          :
+          res.status(404).json({
+            error: `no data by id:${url_parts[3]} found`
+          })
+      }).catch(e => {
+        next(e)
+      })
 
-
-        persons.forEach(person=>{
-
-          if(person.id === +url_parts[3]){
-
-            response = {
-              message: `Contact with id:${+url_parts[3]} has been removed`,
-              data: persons.filter(i => i.id !== +url_parts[3])
-            };
-            persons = persons.filter(i => i.id !== +url_parts[3])
-            res.json(response);
-          }
-        }):res.status(404).json({
-          error: `no data by id:${url_parts[3]} found`
-        });
       break;
     default:
       break;
   }
 })
 
-app.get('/api/*', (req, res) => {
+app.put('/api/persons/:id', (req, res, next) => {
+  const person = {
+    name: req.body.name,
+    number: req.body.number
+  }
+  Persons.findByIdAndUpdate(req.params.id, person)
+    .then(r => {
+      Persons.find({}).then(r => {
+        const response = {
+          data: r.map(pers => pers.toJSON()),
+          message: 'successfully updated'
+        }
+        res.json(response)
+      })
+    }).catch(e => {
+      next(e)
+    })
+})
+
+app.get('/api/*', (req, res, next) => {
   const url_parts = req.path.split('/');
   //console.log(url_parts);
   switch(url_parts[2]){
@@ -71,25 +86,21 @@ app.get('/api/*', (req, res) => {
       let response;
       console.log(url_parts);
       (url_parts[3] !== '' && url_parts[3])?
-        Persons.find({id: url_parts[3]}).then(r => {
-        r?
-          res.json(r.map(prs => prs.toJSON()))
-        :
-          res.status(404).json({
-            error: `no data by id:${url_parts[3]} found`
-          })
+        Persons.findById(url_parts[3]).then(r => {
+          console.log(r);
+          res.json(r.toJSON())
+        }).catch(e => {
+          next(e)
         })
         :Persons.find({}).then(r=>{
-          r?
-            res.json(r.map(prs => prs.toJSON()))
-          :
-            res.status(404).json({
-            error: `no data found`
-          })
+          console.log(r);
+          console.log("here");
+          res.json(r.map(prs => prs.toJSON()))
+        }).catch(e => {
+          next(e)
         })
       break;
     default:
-      res.send("<h1>no data</h1>")
       break;
   }
 })
@@ -106,33 +117,41 @@ app.get('/info', (req, res) => {
     res.send(info_page);
 })
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
 
-  if(Object.keys(req.body).length > 0) {
+  const body = req.body;
 
-    //console.log(req.body);
-    const body = JSON.parse(JSON.stringify(req.body))
-    //console.log(body.number);
+  if(Object.keys(body).length > 0) {
 
-    if(persons.some(obj => {if(obj.name === body.name)return true})){
-      res.status(409).json({
-        error: "New contact name should differ from other contacts"
+    Persons.find({
+      name: body.name,
+      number: body.number
+    }).then(r => {
+
+      if (body.name === (undefined||"") || body.number === (undefined||"")) {
+        res.status(400).json({
+          error: "Request must contain name and number information"
+        })
+      } else {
+
+        new Persons({
+          name: body.name,
+          number: body.number
+        }).save().then(r => {
+          Persons.find().then(r => {
+            const response = {
+              message: `New contact has been added`,
+              data: r
+            };
+            res.json(response)
+          })
+        })
+
+      }
+    })
+      .catch(e => {
+
       })
-    } else if(body.name === undefined || body.number === undefined){
-      res.status(400).json({
-        error: "Request must contain name and number information"
-      })
-    } else {
-      //body.id = persons[persons.length-1].id+1;
-      body.id = genRandNum("9999", "0000");
-      persons.push(body);
-      const response = {
-        message: `New contact has been added`,
-        data: persons
-      };
-      res.send(response)
-      //persons.push()
-    }
   }
   else {
     res.status(400).json({
@@ -140,6 +159,27 @@ app.post('/api/persons', (req, res) => {
     })
   }
 })
+
+
+
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(unknownEndpoint)
+
+
+const errorHandler = (e, req, res, next) => {
+  console.error(e.message)
+
+  if (e.name === 'CastError' && e.kind == 'ObjectId')
+    return res.status(400).send({ error: 'malformatted id' })
+
+  next(e)
+}
+
+app.use(errorHandler)
 
 
 
