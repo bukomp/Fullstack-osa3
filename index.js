@@ -12,7 +12,7 @@ mongoose.set('useFindAndModify', false);
 
 const app = express()
 
-app.use(express.static('build'))
+app.use(express.static('./build'))
 
 app.use(express.json())
 
@@ -26,18 +26,13 @@ app.use(cors())
 
 
 
-/*const malformattedId = (e, req, res, next) => {
-  response.status(404).send({ error: 'unknown endpoint' })
-}*/
 
 app.delete('/api/*', (req, res, next) => {
   const url_parts = req.path.split('/');
-  //console.log(url_parts);
   switch(url_parts[2]){                                             //I added switches to some calls in case there will be more databases
     case "persons":
 
       Persons.findByIdAndDelete(url_parts[3]).then(r => {
-        console.log(r);
         r?
           Persons.find({}).then(r => {
             console.log(r.map(pers => pers.toJSON()));
@@ -81,11 +76,9 @@ app.put('/api/persons/:id', (req, res, next) => {
 
 app.get('/api/*', (req, res, next) => {
   const url_parts = req.path.split('/');
-  //console.log(url_parts);
   switch(url_parts[2]){
     case "persons":
       let response;
-      console.log(url_parts);
       (url_parts[3] !== '' && url_parts[3])?
         Persons.findById(url_parts[3]).then(r => {
           console.log(r);
@@ -94,8 +87,6 @@ app.get('/api/*', (req, res, next) => {
           next(e)
         })
         :Persons.find({}).then(r=>{
-          console.log(r);
-          console.log("here");
           res.json(r.map(prs => prs.toJSON()))
         }).catch(e => {
           next(e)
