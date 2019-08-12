@@ -63,8 +63,8 @@ const App = () => {
         showMessage(false, `${newName} successfully has been added`)
       })
       .catch(e => {
-        console.log(e)
-        showMessage(true, `${newName} can't be added with error:s ${e}`)
+        console.log(e.response.data.error);
+        showMessage(true, `${newName} can't be added with error: ${e.response.data.error}`)
       })
   }
 

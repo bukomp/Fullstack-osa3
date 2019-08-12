@@ -6,7 +6,8 @@ const morgan = require('morgan')
 const fs = require('fs')
 const cors = require('cors')
 const mongoose = require('mongoose')
-mongoose.set('useFindAndModify', false)
+mongoose.set('useFindAndModify', false);
+
 
 
 const app = express()
@@ -137,20 +138,25 @@ app.post('/api/persons', (req, res, next) => {
         new Persons({
           name: body.name,
           number: body.number
-        }).save().then(r => {
-          Persons.find().then(r => {
-            const response = {
-              message: `New contact has been added`,
-              data: r
-            };
-            res.json(response)
-          })
         })
+          .save()
+          .then(r => {
+            Persons.find().then(r => {
+              const response = {
+                message: `New contact has been added`,
+                data: r
+              };
+              res.json(response)
+            })
+          })
+          .catch(e => {
+            next(e)
+          })
 
       }
     })
       .catch(e => {
-
+        next(e)
       })
   }
   else {
@@ -173,14 +179,17 @@ app.use(unknownEndpoint)
 const errorHandler = (e, req, res, next) => {
   console.error(e.message)
 
-  if (e.name === 'CastError' && e.kind == 'ObjectId')
-    return res.status(400).send({ error: 'malformatted id' })
+  if (e.name === 'CastError' && e.kind == 'ObjectId') {
+    return res.status(400).send({error: 'malformatted id'})
+  }
+  else if (e.name === 'ValidationError') {
+    return res.status(400).json({error: e.message})
+  }
 
   next(e)
 }
 
 app.use(errorHandler)
-
 
 
 const PORT = process.env.PORT

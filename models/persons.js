@@ -1,9 +1,7 @@
 const mongoose = require('mongoose')
+mongoose.set('useFindAndModify', false);
+const uniqueValidator = require('mongoose-unique-validator');
 
-/*if ( process.argv.length<3 ) {
-  console.log('give password as argument')
-  process.exit(1)
-}*/
 
 const url = process.env.MONGODB_URI;
 mongoose.connect(url, { useNewUrlParser: true })
@@ -14,9 +12,11 @@ mongoose.connect(url, { useNewUrlParser: true })
     console.log('error connecting to MongoDB:', error.message)
   })
 const personSchema = new mongoose.Schema({
-  name: String,
-  number: String
+  name: { type: String, required: true, unique: true, minlength: 3},
+  number: { type: String, required: true, minlength: 8}
 })
+
+personSchema.plugin(uniqueValidator, { message: 'Error, expected name to be unique' })
 
 personSchema.set('toJSON', {
   transform: (document, r) => {
@@ -26,26 +26,5 @@ personSchema.set('toJSON', {
   }
 })
 
-const Person = mongoose.model('Person', personSchema)
-
-const person = new Person({
-  name: process.argv[3],
-  number: process.argv[4]
-})
-
-/*if(process.argv[3] && process.argv[4]) {
-  person.save().then(r => {
-  console.log(`added ${r.name} number ${r.number} to phonebook`);
-  mongoose.connection.close();
-})
-} else {
-  Person.find({}).then(r => {
-    console.log("phonebook:");
-    r.forEach(note => {
-      console.log(note)
-    })
-    mongoose.connection.close()
-  })
-}*/
 
 module.exports = mongoose.model('Person', personSchema);
