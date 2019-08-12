@@ -1,28 +1,27 @@
-require('dotenv').config()
+require('dotenv').config();
 
-const express = require('express')
-const Persons = require('./models/persons')
-const morgan = require('morgan')
-const fs = require('fs')
-const cors = require('cors')
-const mongoose = require('mongoose')
+const express = require('express');
+const Persons = require('./models/persons');
+const morgan = require('morgan');
+const cors = require('cors');
+const mongoose = require('mongoose');
 mongoose.set('useFindAndModify', false);
 
 
 
-const app = express()
+const app = express();
 
-app.use(express.static('./build'))
+app.use(express.static('./build'));
 
-app.use(express.json())
+app.use(express.json());
 
 morgan.token('data', req => {
   if(req.method === 'POST')return JSON.stringify(req.body)
-})
+});
 
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms :data'))
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :data'));
 
-app.use(cors())
+app.use(cors());
 
 
 
@@ -47,32 +46,31 @@ app.delete('/api/*', (req, res, next) => {
           })
       }).catch(e => {
         next(e)
-      })
+      });
 
       break;
     default:
       break;
   }
-})
-
+});
 app.put('/api/persons/:id', (req, res, next) => {
   const person = {
     name: req.body.name,
     number: req.body.number
-  }
+  };
   Persons.findByIdAndUpdate(req.params.id, person)
     .then(r => {
       Persons.find({}).then(r => {
         const response = {
           data: r.map(pers => pers.toJSON()),
           message: 'successfully updated'
-        }
+        };
         res.json(response)
       })
     }).catch(e => {
       next(e)
     })
-})
+});
 
 app.get('/api/*', (req, res, next) => {
   const url_parts = req.path.split('/');
@@ -90,7 +88,7 @@ app.get('/api/*', (req, res, next) => {
           res.json(r.map(prs => prs.toJSON()))
         }).catch(e => {
           next(e)
-        })
+        });
       break;
     default:
       break;
@@ -105,9 +103,9 @@ app.get('/info', (req, res) => {
       <div>
         ${new Date()}
       </div> 
-    `
+    `;
     res.send(info_page);
-})
+});
 
 app.post('/api/persons', (req, res, next) => {
 
@@ -155,22 +153,22 @@ app.post('/api/persons', (req, res, next) => {
       error: "Request body is empty"
     })
   }
-})
+});
 
 
 
 
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
-}
+};
 
 app.use(unknownEndpoint)
 
 
 const errorHandler = (e, req, res, next) => {
-  console.error(e.message)
+  console.error(e.message);
 
-  if (e.name === 'CastError' && e.kind == 'ObjectId') {
+  if (e.name === 'CastError' && e.kind === 'ObjectId') {
     return res.status(400).send({error: 'malformatted id'})
   }
   else if (e.name === 'ValidationError') {
@@ -178,12 +176,12 @@ const errorHandler = (e, req, res, next) => {
   }
 
   next(e)
-}
+};
 
-app.use(errorHandler)
+app.use(errorHandler);
 
 
-const PORT = process.env.PORT
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
-})
+});
